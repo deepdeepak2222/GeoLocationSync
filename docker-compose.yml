@@ -1,0 +1,79 @@
+
+version: '3.8'
+networks:
+  geo_loc:
+    name: geo_loc
+    external: true
+
+services:
+  geo_loc_backend:
+    image: geo_loc_backend
+    container_name: geo_loc_backend
+    build:
+      context: .
+      dockerfile: Dockerfile-CloudImage-3.6
+    restart: always
+    environment:
+      - uid=1000
+      - gid=1000
+    env_file:
+      - .env
+    volumes:
+      - ${BASE_DIR}/logs/geo_loc:/var/log/enterprise
+      - ${BASE_DIR}/:/apps/
+    ports:
+      - 8080:8000
+      - 8081:8001
+      - 8088:8008
+    networks:
+      - geo_loc
+#    command: bash -c "tail -f /dev/null"
+    command: bash -c "cd /apps/GeoLocationSync/geo_loc && python3.6 manage.py runserver 0:8000"
+
+  geo_loc_celery:
+    image: geo_loc_backend
+    deploy:
+      replicas: 1
+    container_name: geo_loc_celery
+    build:
+      context: .
+      dockerfile: Dockerfile-CloudImage-3.6
+    restart: always
+    environment:
+      - uid=1000
+      - gid=1000
+    env_file:
+      - .env
+    volumes:
+      - ${BASE_DIR}/logs/geo_loc:/var/log/enterprise
+      - ${BASE_DIR}/:/apps/
+#    ports:
+#      - 8000:8000
+#      - 8001:8001
+#      - 8007:8007
+    networks:
+      - geo_loc
+#    command: bash -c "tail -f /dev/null"
+#    entrypoint: /apps/geo_loc/celery.sh
+    command: bash -c "cd /apps/GeoLocationSync/geo_loc && celery --app=geo_loc worker --logfile=/var/log/enterprise/celery.log -l info -B"
+
+  geo_loc_postgres:
+    image: postgres:13
+    container_name: geo_loc_postgres
+    restart: always
+    networks:
+      - geo_loc
+    environment:
+      POSTGRES_PASSWORD: geo_loc
+
+  geo_loc_redis:
+    image: redis:7.0.0
+    container_name: geo_loc_redis
+    command: redis-server --appendonly yes  --requirepass ${REDIS_PASSWORD}
+    restart: always
+    networks:
+      - geo_loc
+    ports:
+      - "6389:6379"
+#    volumes:
+#      - ${BASE_DIR}/redis/data:/data

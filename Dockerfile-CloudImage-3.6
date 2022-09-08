@@ -1,0 +1,31 @@
+FROM centos:7
+RUN export DOCKER_DEFAULT_PLATFORM=linux/amd64 # Required when using apple mac book pro M1 chip
+# import nltk in python3.6 with centos7 caused sqlite3 error.
+RUN yum install sqlite-devel -y
+
+RUN yum -y update && yum -y install gcc openssl-devel bzip2-devel libffi-devel wget make && yum clean all
+RUN cd /opt && wget --no-check-certificate https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz && tar xzf Python-3.6.5.tgz && cd Python-3.6*/ && ./configure --enable-optimizations && make altinstall && rm -rf /opt/Python* && mkdir /pyscripts
+ENV LANG C.UTF-8
+
+RUN yum -y install gcc libmemcached-devel
+RUN localedef -i en_US -f UTF-8 C.UTF-8
+
+COPY ../. /apps/geo_loc
+
+WORKDIR /apps/geo_loc
+RUN yum install -y python3.6-devel openldap-devel
+RUN yum install -y xmlsec1-openssl
+RUN yum install unzip -y
+
+# For pdftotext
+RUN yum install gcc-c++ pkgconfig poppler-cpp-devel python-devel redhat-rpm-config -y
+
+RUN python3.6 -m pip install --upgrade pip;
+
+# Postgres related
+RUN yum groupinstall "Development Tools" -y
+RUN yum install python3-devel -y
+RUN yum install postgresql-libs -y
+RUN yum install postgresql-devel -y
+
+RUN python3.6 -m pip install -r requirements.txt;
